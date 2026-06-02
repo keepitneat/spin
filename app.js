@@ -6,10 +6,11 @@ import { loadState, saveState, createWheel, renameWheel, deleteWheel,
   duplicateWheel, setActive, setItems, setSettings, recordWinner } from './store.js';
 import { parseList } from './parse.js';
 import { pickIndex, removeAt, moveItem } from './picker.js';
-import { sliceAngles, rotationForWinner } from './geometry.js';
+import { sliceAngles, rotationForWinner, winnerAt } from './geometry.js';
 import { buildWheelSVG } from './wheel.js';
 import { PALETTE_NAMES, normalizePalette } from './palette.js';
 import { THEME_STATES, normalizeTheme, themeAttr } from './theme.js';
+import { tick, ding, unlock } from './sound.js';
 
 const storage = window.localStorage;
 let state = loadState(storage);
@@ -17,6 +18,7 @@ let rotation = 0;          // current cumulative wheel rotation (deg)
 let spinning = false;
 let removedThisDraw = [];  // winners removed during the current remove-winner draw
 let dragFrom = null;       // index being dragged in the editor
+let soundOn = localStorage.getItem('sound') !== 'off'; // default on; user can mute
 
 const $ = (id) => document.getElementById(id);
 const nextId = (prefix) => `${prefix}_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -122,6 +124,10 @@ function spin() {
   rotor.classList.add('spinning');
   rotor.style.transform = `rotate(${rotation}deg)`;
 
+  // Tick once per slice that passes the pointer, synced to the real rotation
+  // (so ticks decelerate exactly with the wheel). A landing chime fires on settle.
+  if (soundOn) startTicking(rotor, angles);
+
   const settle = () => {
     if (!spinning) return; // idempotent: transitionend and the timeout can't both run the body
     rotor.removeEventListener('transitionend', settle);
@@ -129,6 +135,7 @@ function spin() {
     const winner = w.items[winnerIndex];
     $('winner').hidden = false;
     $('winner').textContent = `🎉 Winner: ${winner.label}`;
+    if (soundOn) ding();
 
     if (w.settings.history) { state = recordWinner(state, w.id, winner.label, Date.now()); }
     if (w.settings.removeWinner) {
@@ -144,6 +151,27 @@ function spin() {
   // button can never get stuck disabled. settle() is idempotent.
   const durMs = (parseFloat(getComputedStyle(rotor).transitionDuration) || 4) * 1000;
   setTimeout(settle, durMs + 250);
+}
+
+// Current applied rotation (deg) read from the element's transform matrix.
+function currentRotationDeg(el) {
+  const t = getComputedStyle(el).transform;
+  if (!t || t === 'none') return 0;
+  const m = new DOMMatrixReadOnly(t);
+  return (Math.atan2(m.b, m.a) * 180) / Math.PI;
+}
+
+// Plays a tick each time a new slice crosses under the top pointer, following
+// the real animated rotation so ticks slow down with the wheel. Stops on settle.
+function startTicking(rotor, angles) {
+  let lastIndex = winnerAt(angles, currentRotationDeg(rotor));
+  const step = () => {
+    if (!spinning) return;
+    const idx = winnerAt(angles, currentRotationDeg(rotor));
+    if (idx !== lastIndex) { lastIndex = idx; tick(); }
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
 // --- editor actions ---
@@ -307,9 +335,20 @@ document.addEventListener('click', (e) => {
 $('palette-toggle').addEventListener('click', cyclePalette);
 $('theme-toggle').addEventListener('click', cycleTheme);
 
+function updateSoundIcon() { $('sound-toggle').textContent = soundOn ? '🔊' : '🔇'; }
+$('sound-toggle').addEventListener('click', () => {
+  soundOn = !soundOn;
+  localStorage.setItem('sound', soundOn ? 'on' : 'off');
+  updateSoundIcon();
+  if (soundOn) { unlock(); ding(); } // confirm + unlock audio within the gesture
+});
+// Spin is a user gesture — unlock audio there too so the first spin can tick.
+$('spin-btn').addEventListener('click', unlock);
+
 // --- init ---
 
 document.documentElement.setAttribute('data-palette', normalizePalette(state.palette));
+updateSoundIcon();
 renderAll();
 
 if ('serviceWorker' in navigator) {
