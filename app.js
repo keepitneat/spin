@@ -32,6 +32,11 @@ function renderWheel() {
   // visual wheel can never disagree with the picker (weighted off ⇒ uniform).
   const drawItems = w.settings.weighted ? w.items : w.items.map((it) => ({ ...it, weight: 1 }));
   $('wheel-rotor-host').innerHTML = buildWheelSVG(drawItems, state.palette);
+  // Re-apply the current orientation to the freshly-rendered rotor so the wheel
+  // stays parked on the winner after a spin instead of snapping back to start.
+  // No .spinning class here ⇒ no transition ⇒ instant, no visible reset.
+  const parked = $('wheel-rotor-host').firstElementChild;
+  if (parked) parked.style.transform = `rotate(${rotation}deg)`;
   $('active-wheel-name').textContent = w.name;
   $('spin-btn').disabled = w.items.length === 0 || spinning;
   renderRestore();
