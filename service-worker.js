@@ -2,7 +2,7 @@
  * installs as a PWA and works offline. Bump CACHE_VERSION on any change to
  * the import graph (new module → add to APP_SHELL AND bump the version). */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `just-the-spin-${CACHE_VERSION}`;
 
 const APP_SHELL = [
