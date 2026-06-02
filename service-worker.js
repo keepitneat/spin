@@ -2,7 +2,7 @@
  * installs as a PWA and works offline. Bump CACHE_VERSION on any change to
  * the import graph (new module → add to APP_SHELL AND bump the version). */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `just-the-spin-${CACHE_VERSION}`;
 
 const APP_SHELL = [
@@ -48,7 +48,15 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
+  // Network-first: always serve fresh content when online (so updates show
+  // immediately), refresh the cache, and fall back to cache only when offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return res;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
