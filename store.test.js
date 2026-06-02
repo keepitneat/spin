@@ -94,6 +94,15 @@ test('setItems / setSettings update the target wheel immutably', () => {
   assert.equal(withSettings.wheels[0].settings.history, true);
 });
 
+test('setItems: clones the array so later caller mutation does not leak', () => {
+  const base = defaultState();
+  const id = base.wheels[0].id;
+  const caller = [{ label: 'A', weight: 1 }];
+  const s = setItems(base, id, caller);
+  caller.push({ label: 'B', weight: 1 }); // mutate the caller's array afterward
+  assert.equal(s.wheels[0].items.length, 1); // stored state is unaffected
+});
+
 test('recordWinner: prepends and caps at HISTORY_CAP', () => {
   let s = defaultState();
   const id = s.wheels[0].id;

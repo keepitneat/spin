@@ -107,7 +107,7 @@ export function setActive(state, id) {
 }
 
 export function setItems(state, id, items) {
-  return mapWheel(state, id, (w) => ({ ...w, items }));
+  return mapWheel(state, id, (w) => ({ ...w, items: [...items] }));
 }
 
 export function setSettings(state, id, partial) {
