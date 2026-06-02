@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Just the Spin</title>
+  <meta name="description" content="Spin a wheel to pick. No ads, no tracking.">
+
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#047857">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+
+  <!-- FOUC prevention: apply theme before CSS loads (runs before modules,
+       so it can't import theme.js — keep its valid-theme rule in sync). -->
+  <script>
+    (function () {
+      const saved = localStorage.getItem('theme');
+      if (saved && saved !== 'system') {
+        document.documentElement.setAttribute('data-theme', saved);
+      }
+      const palette = localStorage.getItem('palette');
+      if (palette) document.documentElement.setAttribute('data-palette', palette);
+    })();
+  </script>
+
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1><span class="brand-just">Just the</span> <span class="brand-word">Spin</span></h1>
+    <div class="toggles">
+      <button id="palette-toggle" aria-label="Change colors" title="Colors">◑</button>
+      <button id="theme-toggle" aria-label="Change theme" title="Theme">☾</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="switcher">
+      <button id="switch-toggle" aria-haspopup="true" aria-expanded="false">
+        <span id="active-wheel-name">My first wheel</span> <span aria-hidden="true">▾</span>
+      </button>
+      <div id="wheel-menu" hidden></div>
+    </section>
+
+    <section id="stage">
+      <svg id="wheel" viewBox="-110 -110 220 235" aria-label="Picker wheel" role="img">
+        <defs>
+          <radialGradient id="sheen" cx="50%" cy="50%" r="75%">
+            <stop offset="0%" stop-color="#fff" stop-opacity="0.32"/>
+            <stop offset="55%" stop-color="#fff" stop-opacity="0.06"/>
+            <stop offset="100%" stop-color="#000" stop-opacity="0.14"/>
+          </radialGradient>
+          <filter id="wsh" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.20"/>
+          </filter>
+        </defs>
+        <polygon id="pointer" points="0,-104 -10,-122 10,-122" fill="#047857"/>
+        <g id="wheel-rotor-host"></g>
+      </svg>
+      <button id="spin-btn" type="button">Spin</button>
+      <p id="winner" aria-live="polite" hidden></p>
+    </section>
+
+    <section id="editor">
+      <div class="editor-head">
+        <span id="item-count">Items (0)</span>
+        <button id="paste-btn" type="button">📋 Paste list</button>
+      </div>
+      <ul id="item-list"></ul>
+      <form id="add-form">
+        <input id="add-input" type="text" placeholder="Add an item…" autocomplete="off">
+        <button type="submit">Add</button>
+      </form>
+      <div class="chips">
+        <button class="chip" id="chip-remove" type="button" aria-pressed="false">↩ Remove winner</button>
+        <button class="chip" id="chip-weights" type="button" aria-pressed="false">⚖ Weights</button>
+        <button class="chip" id="chip-history" type="button" aria-pressed="true">🕑 History</button>
+      </div>
+      <ol id="history-list" hidden></ol>
+    </section>
+  </main>
+
+  <footer>
+    <p>Part of the <a href="https://keepitneat.app">Keep It Neat</a> series.</p>
+    <p>No ads. No tracking. <a href="https://github.com/keepitneat/spin">Source on GitHub</a>.</p>
+    <p>If this is useful, you can <a href="https://ko-fi.com/keepitneat">buy me a coffee</a>.</p>
+  </footer>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
