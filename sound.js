@@ -31,23 +31,9 @@ function tone(freq, durSec, { type = 'sine', gain = 0.05, delay = 0 } = {}) {
   osc.stop(t0 + durSec + 0.02);
 }
 
-// A peg passing the pointer — a woodblock "tok": a pitched triangle body that
-// drops quickly in pitch, with a very fast percussive decay.
+// A peg passing the pointer — crisp triangle blip, louder.
 export function tick() {
-  const a = audio();
-  if (!a) return;
-  const t0 = a.currentTime;
-  const osc = a.createOscillator();
-  const g = a.createGain();
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(1080, t0);
-  osc.frequency.exponentialRampToValueAtTime(560, t0 + 0.028); // pitch drop = woody "tok"
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(0.22, t0 + 0.002); // sharp attack
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.06); // fast decay
-  osc.connect(g).connect(a.destination);
-  osc.start(t0);
-  osc.stop(t0 + 0.08);
+  tone(1500, 0.035, { type: 'triangle', gain: 0.22 });
 }
 
 // A bell: a strike built from inharmonic partials (the metallic ratios real
@@ -55,7 +41,7 @@ export function tick() {
 export function ding() {
   const a = audio();
   if (!a) return;
-  const fundamental = 587; // ~D5
+  const fundamental = 740; // ~F#5 — a touch brighter
   // ratio, relative loudness, relative decay length
   const partials = [
     [1.0, 1.0, 1.0],
