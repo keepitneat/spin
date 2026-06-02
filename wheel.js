@@ -73,29 +73,54 @@ function renderLabel(label, x, y, fill, rotateDeg) {
   );
 }
 
+// Two equal items read best as top/bottom halves (a coin-flip layout): the top
+// item upright, the bottom item upside-down — so a 180° spin lands either one
+// upright under the pointer. Exposed so app.js can match the spin physics.
+export function isTwoHalfLayout(weights) {
+  return weights.length === 2 && weights[0] === weights[1];
+}
+
+function twoHalfSlices(items, paletteName) {
+  const c0 = colorForSlice(paletteName, 0);
+  const c1 = colorForSlice(paletteName, 1);
+  // Top semicircle (item 0) and bottom semicircle (item 1); horizontal divider.
+  const top = `<path d="M${-R},0 A${R},${R} 0 0,1 ${R},0 Z" fill="${c0}" stroke="#fff" stroke-width="2"/>`;
+  const bottom = `<path d="M${R},0 A${R},${R} 0 0,1 ${-R},0 Z" fill="${c1}" stroke="#fff" stroke-width="2"/>`;
+  return (
+    top + bottom +
+    renderLabel(items[0].label, 0, -LABEL_R, labelColor(c0), null) +   // upright
+    renderLabel(items[1].label, 0, LABEL_R, labelColor(c1), 180)        // upside-down
+  );
+}
+
 export function buildWheelSVG(items, paletteName) {
   const weights = items.map((it) => it.weight || 1);
-  const angles = items.length ? sliceAngles(weights) : [];
 
-  const slices = angles.map((seg, i) => {
-    const fill = colorForSlice(paletteName, i);
-    const label = items[i].label;
-    if (seg.end - seg.start >= 360) {
-      // Single-item wheel: SVG drops degenerate 360° arcs, so use a full disc instead.
+  let slices;
+  if (isTwoHalfLayout(weights)) {
+    slices = twoHalfSlices(items, paletteName);
+  } else {
+    const angles = items.length ? sliceAngles(weights) : [];
+    slices = angles.map((seg, i) => {
+      const fill = colorForSlice(paletteName, i);
+      const label = items[i].label;
+      if (seg.end - seg.start >= 360) {
+        // Single-item wheel: SVG drops degenerate 360° arcs, so use a full disc instead.
+        return (
+          `<circle r="${R}" fill="${fill}" stroke="#fff" stroke-width="2"/>` +
+          renderLabel(label, 0, -LABEL_R, labelColor(fill), null)
+        );
+      }
+      const mid = (seg.start + seg.end) / 2;
+      const labelPos = polarToXY(LABEL_R, mid);
+      const rot = mid > 180 ? mid - 270 : mid - 90; // keep text upright-ish
       return (
-        `<circle r="${R}" fill="${fill}" stroke="#fff" stroke-width="2"/>` +
-        renderLabel(label, 0, -LABEL_R, labelColor(fill), null)
+        `<path d="${slicePath(seg.start, seg.end)}" fill="${fill}" ` +
+        `stroke="#fff" stroke-width="2"/>` +
+        renderLabel(label, labelPos.x, labelPos.y, labelColor(fill), rot)
       );
-    }
-    const mid = (seg.start + seg.end) / 2;
-    const labelPos = polarToXY(LABEL_R, mid);
-    const rot = mid > 180 ? mid - 270 : mid - 90; // keep text upright-ish
-    return (
-      `<path d="${slicePath(seg.start, seg.end)}" fill="${fill}" ` +
-      `stroke="#fff" stroke-width="2"/>` +
-      renderLabel(label, labelPos.x, labelPos.y, labelColor(fill), rot)
-    );
-  }).join('');
+    }).join('');
+  }
 
   return (
     `<g class="wheel-rotor" filter="url(#wsh)">` +

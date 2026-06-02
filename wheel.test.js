@@ -56,3 +56,17 @@ test('buildWheelSVG: short labels stay on a single line (no spurious wrap)', () 
   const svg = buildWheelSVG([{ label: 'Thai', weight: 1 }, { label: 'Pizza', weight: 1 }], 'festive');
   assert.equal((svg.match(/<tspan/g) || []).length, 2); // one tspan per label
 });
+
+test('buildWheelSVG: two equal items use a top/bottom split with an upside-down loser', () => {
+  const svg = buildWheelSVG([{ label: 'Heads', weight: 1 }, { label: 'Tails', weight: 1 }], 'festive');
+  assert.ok(svg.includes('Heads'));
+  assert.ok(svg.includes('Tails'));
+  assert.equal((svg.match(/<path/g) || []).length, 2); // two semicircles
+  assert.match(svg, /rotate\(180/);                     // bottom label is upside-down
+});
+
+test('buildWheelSVG: two UNequal-weight items keep the normal radial layout', () => {
+  const svg = buildWheelSVG([{ label: 'Big', weight: 3 }, { label: 'Small', weight: 1 }], 'festive');
+  // radial slices are pie paths (M0,0 …), not semicircle halves
+  assert.match(svg, /M0,0 L/);
+});

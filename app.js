@@ -7,7 +7,7 @@ import { loadState, saveState, createWheel, renameWheel, deleteWheel,
 import { parseList } from './parse.js';
 import { pickIndex, removeAt, moveItem } from './picker.js';
 import { sliceAngles, rotationForWinner, winnerAt } from './geometry.js';
-import { buildWheelSVG } from './wheel.js';
+import { buildWheelSVG, isTwoHalfLayout } from './wheel.js';
 import { PALETTE_NAMES, normalizePalette } from './palette.js';
 import { THEME_STATES, normalizeTheme, themeAttr } from './theme.js';
 import { tick, ding, unlock } from './sound.js';
@@ -114,7 +114,11 @@ function spin() {
   const weights = w.items.map((it) => (w.settings.weighted ? it.weight || 1 : 1));
   const winnerIndex = pickIndex(weights);
   const angles = sliceAngles(weights);
-  const target = rotationForWinner(angles, winnerIndex, 5);
+  // Two equal items use the top/bottom coin-flip layout, so landing the winner
+  // upright means a half-turn to the bottom item or none for the top item.
+  const target = isTwoHalfLayout(weights)
+    ? 5 * 360 + winnerIndex * 180
+    : rotationForWinner(angles, winnerIndex, 5);
 
   // Always advance forward from current rotation to the next aligned target.
   const base = Math.ceil(rotation / 360) * 360;
