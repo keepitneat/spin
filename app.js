@@ -225,33 +225,107 @@ function toggleSetting(key) {
 
 // --- switcher ---
 
+let menuMode = 'list'; // 'list' | 'new' | 'rename' | 'delete'
+
+function menuButton(text, onclick, className) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.textContent = text;
+  if (className) b.className = className;
+  b.onclick = onclick;
+  return b;
+}
+
+// Inline name entry for New / Rename — replaces the menu list with a field.
+function renderNameInput(renaming) {
+  const row = document.createElement('div');
+  row.className = 'menu-input-row';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = renaming ? 'Rename wheel…' : 'Name this wheel…';
+  input.value = renaming ? activeWheel().name : '';
+  const commit = () => {
+    const name = input.value.trim();
+    if (!name) { menuMode = 'list'; renderMenu(); return; }
+    if (renaming) {
+      state = renameWheel(state, state.activeWheelId, name);
+    } else {
+      removedThisDraw = [];
+      state = createWheel(state, nextId('w'), name);
+    }
+    persist();
+    menuMode = 'list';
+    closeMenu();
+    renderAll();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { menuMode = 'list'; renderMenu(); }
+  });
+  row.append(
+    input,
+    menuButton(renaming ? 'Save' : 'Add', commit, 'primary'),
+    menuButton('Cancel', () => { menuMode = 'list'; renderMenu(); }, 'ghost')
+  );
+  $('wheel-menu').appendChild(row);
+  input.focus();
+}
+
+// Inline two-step delete confirm — no native confirm() dialog.
+function renderDeleteConfirm() {
+  const row = document.createElement('div');
+  row.className = 'menu-confirm';
+  const label = document.createElement('span');
+  label.textContent = `Delete "${activeWheel().name}"?`;
+  row.append(
+    label,
+    menuButton('Delete', () => {
+      removedThisDraw = [];
+      state = deleteWheel(state, state.activeWheelId);
+      persist();
+      menuMode = 'list';
+      closeMenu();
+      renderAll();
+    }, 'danger'),
+    menuButton('Cancel', () => { menuMode = 'list'; renderMenu(); }, 'ghost')
+  );
+  $('wheel-menu').appendChild(row);
+}
+
 function renderMenu() {
   const menu = $('wheel-menu');
   menu.innerHTML = '';
+
+  if (menuMode === 'new') { renderNameInput(false); return; }
+  if (menuMode === 'rename') { renderNameInput(true); return; }
+  if (menuMode === 'delete') { renderDeleteConfirm(); return; }
+
   state.wheels.forEach((w) => {
-    const b = document.createElement('button');
-    b.textContent = (w.id === state.activeWheelId ? '✓ ' : '') + w.name;
-    b.onclick = () => { removedThisDraw = []; state = setActive(state, w.id); persist(); closeMenu(); renderAll(); };
-    menu.appendChild(b);
+    menu.appendChild(menuButton((w.id === state.activeWheelId ? '✓ ' : '') + w.name, () => {
+      removedThisDraw = [];
+      state = setActive(state, w.id);
+      persist(); closeMenu(); renderAll();
+    }));
   });
-  const add = (text, fn) => { const b = document.createElement('button'); b.textContent = text; b.onclick = fn; menu.appendChild(b); };
-  add('+ New wheel', () => {
-    const name = prompt('Name this wheel:', 'New wheel');
-    if (name) { removedThisDraw = []; state = createWheel(state, nextId('w'), name.trim()); persist(); closeMenu(); renderAll(); }
-  });
-  add('✎ Rename current', () => {
-    const name = prompt('Rename wheel:', activeWheel().name);
-    if (name) { state = renameWheel(state, state.activeWheelId, name.trim()); persist(); closeMenu(); renderAll(); }
-  });
-  add('⧉ Duplicate current', () => { removedThisDraw = []; state = duplicateWheel(state, state.activeWheelId, nextId('w')); persist(); closeMenu(); renderAll(); });
+
+  const sep = document.createElement('div');
+  sep.className = 'menu-sep';
+  menu.appendChild(sep);
+
+  menu.appendChild(menuButton('＋ New wheel', () => { menuMode = 'new'; renderMenu(); }));
+  menu.appendChild(menuButton('✎ Rename', () => { menuMode = 'rename'; renderMenu(); }));
+  menu.appendChild(menuButton('⧉ Duplicate', () => {
+    removedThisDraw = [];
+    state = duplicateWheel(state, state.activeWheelId, nextId('w'));
+    persist(); closeMenu(); renderAll();
+  }));
   if (state.wheels.length > 1) {
-    add('🗑 Delete current', () => {
-      if (confirm(`Delete "${activeWheel().name}"?`)) { removedThisDraw = []; state = deleteWheel(state, state.activeWheelId); persist(); closeMenu(); renderAll(); }
-    });
+    menu.appendChild(menuButton(`🗑 Delete "${activeWheel().name}"`, () => { menuMode = 'delete'; renderMenu(); }, 'danger-text'));
   }
 }
-function openMenu() { renderMenu(); $('wheel-menu').hidden = false; $('switch-toggle').setAttribute('aria-expanded', 'true'); }
-function closeMenu() { $('wheel-menu').hidden = true; $('switch-toggle').setAttribute('aria-expanded', 'false'); }
+
+function openMenu() { menuMode = 'list'; renderMenu(); $('wheel-menu').hidden = false; $('switch-toggle').setAttribute('aria-expanded', 'true'); }
+function closeMenu() { menuMode = 'list'; $('wheel-menu').hidden = true; $('switch-toggle').setAttribute('aria-expanded', 'false'); }
 
 // --- toggles ---
 
