@@ -43,3 +43,16 @@ test('buildWheelSVG: respects weights via geometry (wider first slice)', () => {
   const svg = buildWheelSVG([{ label: 'Big', weight: 3 }, { label: 'Small', weight: 1 }], 'festive');
   assert.ok(svg.includes('A')); // arc command present
 });
+
+test('buildWheelSVG: wraps long multi-word labels into multiple tspan lines', () => {
+  const svg = buildWheelSVG([{ label: 'terraforming mars', weight: 1 }, { label: 'x', weight: 1 }], 'festive');
+  assert.ok(svg.includes('terraforming'));
+  assert.ok(svg.includes('mars'));
+  // 'terraforming' + 'mars' wrap to 2 lines, 'x' is 1 line ⇒ ≥ 3 tspans total
+  assert.ok((svg.match(/<tspan/g) || []).length >= 3);
+});
+
+test('buildWheelSVG: short labels stay on a single line (no spurious wrap)', () => {
+  const svg = buildWheelSVG([{ label: 'Thai', weight: 1 }, { label: 'Pizza', weight: 1 }], 'festive');
+  assert.equal((svg.match(/<tspan/g) || []).length, 2); // one tspan per label
+});

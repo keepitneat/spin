@@ -252,12 +252,25 @@ $('add-form').addEventListener('submit', (e) => {
   if (v) { addItem(v); $('add-input').value = ''; }
 });
 
-$('paste-btn').addEventListener('click', async () => {
-  let text = '';
-  try { text = await navigator.clipboard.readText(); } catch { /* permission denied */ }
-  if (!text) text = prompt('Paste your list (one per line or comma-separated):') || '';
-  bulkAdd(text);
+// Inline paste: reveal a textarea in the editor instead of a native popup.
+function openPaste() {
+  $('paste-area').hidden = false;
+  $('paste-btn').setAttribute('aria-expanded', 'true');
+  $('paste-input').focus();
+}
+function closePaste() {
+  $('paste-area').hidden = true;
+  $('paste-input').value = '';
+  $('paste-btn').setAttribute('aria-expanded', 'false');
+}
+$('paste-btn').addEventListener('click', () => {
+  $('paste-area').hidden ? openPaste() : closePaste();
 });
+$('paste-add').addEventListener('click', () => {
+  bulkAdd($('paste-input').value);
+  closePaste();
+});
+$('paste-cancel').addEventListener('click', closePaste);
 
 $('item-list').addEventListener('click', (e) => {
   const btn = e.target.closest('.remove');
