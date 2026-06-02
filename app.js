@@ -28,7 +28,10 @@ function persist() { saveState(storage, state); }
 
 function renderWheel() {
   const w = activeWheel();
-  $('wheel-rotor-host').innerHTML = buildWheelSVG(w.items, state.palette);
+  // Draw slices with the same effective weights the spin math uses, so the
+  // visual wheel can never disagree with the picker (weighted off ⇒ uniform).
+  const drawItems = w.settings.weighted ? w.items : w.items.map((it) => ({ ...it, weight: 1 }));
+  $('wheel-rotor-host').innerHTML = buildWheelSVG(drawItems, state.palette);
   $('active-wheel-name').textContent = w.name;
   $('spin-btn').disabled = w.items.length === 0 || spinning;
   renderRestore();
@@ -115,6 +118,7 @@ function spin() {
   rotor.style.transform = `rotate(${rotation}deg)`;
 
   const settle = () => {
+    if (!spinning) return; // idempotent: transitionend and the timeout can't both run the body
     rotor.removeEventListener('transitionend', settle);
     spinning = false;
     const winner = w.items[winnerIndex];
@@ -130,6 +134,11 @@ function spin() {
     renderAll();
   };
   rotor.addEventListener('transitionend', settle);
+  // Safety net: if transitionend is ever missed (no transition, backgrounded
+  // tab, or a re-render orphaning the listener), settle anyway so the Spin
+  // button can never get stuck disabled. settle() is idempotent.
+  const durMs = (parseFloat(getComputedStyle(rotor).transitionDuration) || 4) * 1000;
+  setTimeout(settle, durMs + 250);
 }
 
 // --- editor actions ---
