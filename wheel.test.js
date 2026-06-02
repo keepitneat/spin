@@ -32,6 +32,13 @@ test('buildWheelSVG: empty list renders no slice paths', () => {
   assert.equal((svg.match(/<path/g) || []).length, 0);
 });
 
+test('buildWheelSVG: single item renders a full disc, not a degenerate arc', () => {
+  const svg = buildWheelSVG([{ label: 'Solo', weight: 1 }], 'festive');
+  assert.ok(svg.includes('Solo'));                       // label present
+  assert.match(svg, /<circle r="92" fill="#047857"/);    // full-disc slice in palette color
+  assert.equal((svg.match(/<path/g) || []).length, 0);   // no degenerate path
+});
+
 test('buildWheelSVG: respects weights via geometry (wider first slice)', () => {
   const svg = buildWheelSVG([{ label: 'Big', weight: 3 }, { label: 'Small', weight: 1 }], 'festive');
   assert.ok(svg.includes('A')); // arc command present

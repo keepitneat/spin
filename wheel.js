@@ -35,6 +35,16 @@ export function buildWheelSVG(items, paletteName) {
 
   const slices = angles.map((seg, i) => {
     const fill = colorForSlice(paletteName, i);
+    if (seg.end - seg.start >= 360) {
+      // Single-item wheel: SVG drops degenerate 360° arcs, so use a full disc instead.
+      return (
+        `<circle r="${R}" fill="${fill}" stroke="#fff" stroke-width="2"/>` +
+        `<text x="0" y="${-LABEL_R}" ` +
+        `fill="${labelColor(fill)}" font-size="9" font-family="-apple-system,sans-serif" ` +
+        `text-anchor="middle" dominant-baseline="middle">` +
+        `${escapeXML(seg.label ?? items[i].label)}</text>`
+      );
+    }
     const mid = (seg.start + seg.end) / 2;
     const labelPos = polarToXY(LABEL_R, mid);
     const rot = mid > 180 ? mid - 270 : mid - 90; // keep text upright-ish
