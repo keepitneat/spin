@@ -31,10 +31,36 @@
 <body>
   <header>
     <h1><span class="brand-just">Just the</span> <span class="brand-word">Spin</span></h1>
-    <div class="toggles">
-      <button id="sound-toggle" aria-label="Toggle sound" title="Sound">🔊</button>
-      <button id="palette-toggle" aria-label="Change colors" title="Colors">◑</button>
-      <button id="theme-toggle" aria-label="Change theme" title="Theme">☾</button>
+    <div class="settings">
+      <button id="settings-toggle" aria-label="Settings" aria-haspopup="true"
+              aria-expanded="false" aria-controls="settings-menu">⚙</button>
+      <div id="settings-menu" role="dialog" aria-label="Settings" hidden>
+        <fieldset class="settings-group">
+          <legend>Theme</legend>
+          <div class="seg" role="radiogroup" aria-label="Theme">
+            <label><input type="radio" name="theme" value="system"><span>System</span></label>
+            <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+            <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+          </div>
+        </fieldset>
+        <fieldset class="settings-group">
+          <legend>Wheel colors</legend>
+          <div class="seg" role="radiogroup" aria-label="Wheel colors">
+            <label><input type="radio" name="palette" value="festive"><span>Festive</span></label>
+            <label><input type="radio" name="palette" value="mono"><span>Mono</span></label>
+            <label><input type="radio" name="palette" value="bw"><span>B&amp;W</span></label>
+          </div>
+        </fieldset>
+        <label class="settings-group toggle-row">
+          <span class="legendish">Sound</span>
+          <input type="checkbox" id="sound-checkbox">
+        </label>
+        <div class="settings-group install-group">
+          <span class="legendish">Install this app</span>
+          <button id="install-btn" type="button" hidden>Install</button>
+          <p id="install-note"></p>
+        </div>
+      </div>
     </div>
   </header>
 

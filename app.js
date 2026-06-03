@@ -8,8 +8,8 @@ import { parseList } from './parse.js';
 import { pickIndex, removeAt, moveItem } from './picker.js';
 import { sliceAngles, rotationForWinner, winnerAt } from './geometry.js';
 import { buildWheelSVG, isTwoHalfLayout } from './wheel.js';
-import { PALETTE_NAMES, normalizePalette } from './palette.js';
-import { THEME_STATES, normalizeTheme, themeAttr } from './theme.js';
+import { normalizePalette } from './palette.js';
+import { normalizeTheme, themeAttr } from './theme.js';
 import { tick, ding, unlock } from './sound.js';
 
 const storage = window.localStorage;
@@ -329,24 +329,56 @@ function renderMenu() {
 function openMenu() { menuMode = 'list'; renderMenu(); $('wheel-menu').hidden = false; $('switch-toggle').setAttribute('aria-expanded', 'true'); }
 function closeMenu() { menuMode = 'list'; $('wheel-menu').hidden = true; $('switch-toggle').setAttribute('aria-expanded', 'false'); }
 
-// --- toggles ---
+// --- settings (theme / palette / sound / install) ---
 
-function cyclePalette() {
-  const i = PALETTE_NAMES.indexOf(normalizePalette(state.palette));
-  state.palette = PALETTE_NAMES[(i + 1) % PALETTE_NAMES.length];
+function applyPalette(name) {
+  state.palette = normalizePalette(name);
   document.documentElement.setAttribute('data-palette', state.palette);
   localStorage.setItem('palette', state.palette);
   persist(); renderWheel();
 }
 
-function cycleTheme() {
-  const i = THEME_STATES.indexOf(normalizeTheme(state.theme));
-  state.theme = THEME_STATES[(i + 1) % THEME_STATES.length];
+function applyTheme(name) {
+  state.theme = normalizeTheme(name);
   const attr = themeAttr(state.theme);
   if (attr) document.documentElement.setAttribute('data-theme', attr);
   else document.documentElement.removeAttribute('data-theme');
   localStorage.setItem('theme', state.theme);
   persist();
+}
+
+function setSound(on) {
+  soundOn = on;
+  localStorage.setItem('sound', soundOn ? 'on' : 'off');
+}
+
+function openSettings() { $('settings-menu').hidden = false; $('settings-toggle').setAttribute('aria-expanded', 'true'); }
+function closeSettings() { $('settings-menu').hidden = true; $('settings-toggle').setAttribute('aria-expanded', 'false'); }
+
+// Reflect current state into the menu controls.
+function syncSettingsUI() {
+  document.querySelector(`input[name="theme"][value="${normalizeTheme(state.theme)}"]`).checked = true;
+  document.querySelector(`input[name="palette"][value="${normalizePalette(state.palette)}"]`).checked = true;
+  $('sound-checkbox').checked = soundOn;
+}
+
+// Install: capture the browser prompt where supported; otherwise show guidance.
+let deferredInstall = null;
+function refreshInstallUI() {
+  const installed = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const note = $('install-note');
+  if (installed) {
+    $('install-btn').hidden = true;
+    note.innerHTML = '✓ Installed. Launch it from your home screen or app list.';
+    return;
+  }
+  $('install-btn').hidden = !deferredInstall;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  note.innerHTML = isIOS
+    ? 'On iPhone/iPad: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.'
+    : (deferredInstall
+        ? 'Tap <strong>Install</strong>, or use your browser’s install icon in the address bar.'
+        : 'In your browser menu, choose <strong>Install app</strong> / <strong>Add to Home screen</strong>.');
 }
 
 // --- events ---
@@ -412,23 +444,47 @@ document.addEventListener('click', (e) => {
   if (!$('switcher').contains(e.target)) closeMenu();
 });
 
-$('palette-toggle').addEventListener('click', cyclePalette);
-$('theme-toggle').addEventListener('click', cycleTheme);
-
-function updateSoundIcon() { $('sound-toggle').textContent = soundOn ? '🔊' : '🔇'; }
-$('sound-toggle').addEventListener('click', () => {
-  soundOn = !soundOn;
-  localStorage.setItem('sound', soundOn ? 'on' : 'off');
-  updateSoundIcon();
-  if (soundOn) { unlock(); ding(); } // confirm + unlock audio within the gesture
+// Settings menu open/close + outside-click + Escape.
+$('settings-toggle').addEventListener('click', () => {
+  $('settings-menu').hidden ? openSettings() : closeSettings();
 });
-// Spin is a user gesture — unlock audio there too so the first spin can tick.
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.settings')) closeSettings();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSettings(); });
+
+$('settings-menu').addEventListener('change', (e) => {
+  if (e.target.name === 'theme') applyTheme(e.target.value);
+  else if (e.target.name === 'palette') applyPalette(e.target.value);
+  else if (e.target.id === 'sound-checkbox') {
+    setSound(e.target.checked);
+    if (soundOn) { unlock(); ding(); } // confirm + unlock audio within the gesture
+  }
+});
+
+// Spin is a user gesture — unlock audio there so the first spin can tick.
 $('spin-btn').addEventListener('click', unlock);
+
+// Install prompt handling.
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e;
+  refreshInstallUI();
+});
+window.addEventListener('appinstalled', () => { deferredInstall = null; refreshInstallUI(); });
+$('install-btn').addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice;
+  deferredInstall = null;
+  refreshInstallUI();
+});
 
 // --- init ---
 
 document.documentElement.setAttribute('data-palette', normalizePalette(state.palette));
-updateSoundIcon();
+syncSettingsUI();
+refreshInstallUI();
 renderAll();
 
 if ('serviceWorker' in navigator) {
