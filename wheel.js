@@ -132,8 +132,10 @@ export function buildWheelSVG(items, paletteName) {
   return (
     `<g class="wheel-rotor" filter="url(#wsh)">` +
     slices +
-    `<circle r="${R}" fill="url(#sheen)"/>` +
-    `<circle r="13" fill="#fff" stroke="#e5e7eb"/>` +
+    // Overlays sit on top of the slices — make them transparent to the pointer
+    // so hovering a wedge reaches its <title> tooltip instead of the sheen.
+    `<circle r="${R}" fill="url(#sheen)" pointer-events="none"/>` +
+    `<circle r="13" fill="#fff" stroke="#e5e7eb" pointer-events="none"/>` +
     `</g>`
   );
 }
