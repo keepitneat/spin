@@ -232,7 +232,9 @@ function menuButton(text, onclick, className) {
   b.type = 'button';
   b.textContent = text;
   if (className) b.className = className;
-  b.onclick = onclick;
+  // Stop the click reaching the document outside-click handler: re-rendering the
+  // menu detaches this button, which would otherwise be read as an outside click.
+  b.onclick = (e) => { e.stopPropagation(); onclick(e); };
   return b;
 }
 
