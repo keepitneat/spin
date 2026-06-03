@@ -70,3 +70,16 @@ test('buildWheelSVG: two UNequal-weight items keep the normal radial layout', ()
   // radial slices are pie paths (M0,0 …), not semicircle halves
   assert.match(svg, /M0,0 L/);
 });
+
+test('buildWheelSVG: each slice has a <title> for hover/accessibility', () => {
+  const svg = buildWheelSVG([{ label: 'Thai', weight: 1 }, { label: 'Pizza', weight: 1 }, { label: 'Tacos', weight: 1 }], 'festive');
+  assert.equal((svg.match(/<title>/g) || []).length, 3);
+  assert.ok(svg.includes('<title>Tacos</title>'));
+});
+
+test('buildWheelSVG: shrinks label font as the wheel gets crowded', () => {
+  const few = buildWheelSVG(Array.from({ length: 4 }, (_, i) => ({ label: `i${i}`, weight: 1 })), 'festive');
+  const many = buildWheelSVG(Array.from({ length: 20 }, (_, i) => ({ label: `i${i}`, weight: 1 })), 'festive');
+  assert.ok(few.includes('font-size="9"'));
+  assert.ok(!many.includes('font-size="9"')); // scaled down
+});

@@ -23,13 +23,28 @@ export function colorForSlice(paletteName, index) {
   return colors[index % colors.length];
 }
 
-// Readable label color for a given slice fill, chosen by perceived luminance.
-// Keeps labels legible on the light B&W "paper" slices.
-export function labelColor(hex) {
+const INK = '#111827';
+const PAPER = '#ffffff';
+
+// WCAG relative luminance of a #rrggbb color.
+function relLuminance(hex) {
   const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? '#111827' : '#ffffff';
+  const chan = (i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * chan(0) + 0.7152 * chan(2) + 0.0722 * chan(4);
+}
+
+function contrast(a, b) {
+  const la = relLuminance(a);
+  const lb = relLuminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
+// Readable label color for a slice fill: whichever of ink/paper contrasts more.
+// A true contrast comparison (not a luminance threshold) keeps medium-tone
+// fills like the mono palette's mid-greens legible.
+export function labelColor(hex) {
+  return contrast(hex, INK) > contrast(hex, PAPER) ? INK : PAPER;
 }

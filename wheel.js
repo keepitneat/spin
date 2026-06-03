@@ -29,10 +29,16 @@ function slicePath(start, end) {
     `A${R},${R} 0 ${largeArc},1 ${b.x.toFixed(2)},${b.y.toFixed(2)} Z`;
 }
 
-const FONT = 9;        // label font size
-const LINE_H = 10;     // line height for wrapped labels
-const MAX_CHARS = 12;  // wrap target — words past this start a new line
 const MAX_LINE_PX = 76; // hard width cap; longer lines get compressed to fit
+
+// Label sizing scales down as the wheel gets more (thinner) slices, so labels
+// stay inside their wedges instead of crowding.
+function labelMetrics(n) {
+  if (n <= 8) return { font: 9, lineH: 10, maxChars: 12 };
+  if (n <= 14) return { font: 7.5, lineH: 8.5, maxChars: 10 };
+  if (n <= 22) return { font: 6.5, lineH: 7.5, maxChars: 9 };
+  return { font: 5.5, lineH: 6.5, maxChars: 8 };
+}
 
 // Greedily wrap a label into lines of at most maxChars (by whole words).
 // A single word longer than the limit stays on its own line (then gets
@@ -52,14 +58,14 @@ function wrapLabel(label, maxChars) {
 }
 
 // A <text> label, word-wrapped into centered <tspan> lines. `rotateDeg` null
-// means no rotation (used for the single-item disc).
-function renderLabel(label, x, y, fill, rotateDeg) {
-  const lines = wrapLabel(label, MAX_CHARS);
-  const firstDy = -((lines.length - 1) / 2) * LINE_H;
+// means no rotation (used for the single-item disc). `m` is labelMetrics().
+function renderLabel(label, x, y, fill, rotateDeg, m) {
+  const lines = wrapLabel(label, m.maxChars);
+  const firstDy = -((lines.length - 1) / 2) * m.lineH;
   const xs = x.toFixed(2);
   const tspans = lines.map((line, i) => {
-    const dy = (i === 0 ? firstDy : LINE_H).toFixed(1);
-    const tooWide = line.length * FONT * 0.6 > MAX_LINE_PX;
+    const dy = (i === 0 ? firstDy : m.lineH).toFixed(1);
+    const tooWide = line.length * m.font * 0.6 > MAX_LINE_PX;
     const fit = tooWide ? ` textLength="${MAX_LINE_PX}" lengthAdjust="spacingAndGlyphs"` : '';
     return `<tspan x="${xs}" dy="${dy}"${fit}>${escapeXML(line)}</tspan>`;
   }).join('');
@@ -67,7 +73,7 @@ function renderLabel(label, x, y, fill, rotateDeg) {
     ? ''
     : ` transform="rotate(${rotateDeg.toFixed(1)} ${xs} ${y.toFixed(2)})"`;
   return (
-    `<text x="${xs}" y="${y.toFixed(2)}" fill="${fill}" font-size="${FONT}" ` +
+    `<text x="${xs}" y="${y.toFixed(2)}" fill="${fill}" font-size="${m.font}" ` +
     `font-family="-apple-system,sans-serif" text-anchor="middle" ` +
     `dominant-baseline="middle"${transform}>${tspans}</text>`
   );
@@ -80,25 +86,31 @@ export function isTwoHalfLayout(weights) {
   return weights.length === 2 && weights[0] === weights[1];
 }
 
-function twoHalfSlices(items, paletteName) {
+// Wrap a slice's shape + label in a group whose <title> is the native hover
+// tooltip (so the full name shows even when the printed label is wrapped/small).
+function sliceGroup(label, shape, labelSvg) {
+  return `<g><title>${escapeXML(label)}</title>${shape}${labelSvg}</g>`;
+}
+
+function twoHalfSlices(items, paletteName, m) {
   const c0 = colorForSlice(paletteName, 0);
   const c1 = colorForSlice(paletteName, 1);
   // Top semicircle (item 0) and bottom semicircle (item 1); horizontal divider.
   const top = `<path d="M${-R},0 A${R},${R} 0 0,1 ${R},0 Z" fill="${c0}" stroke="#fff" stroke-width="2"/>`;
   const bottom = `<path d="M${R},0 A${R},${R} 0 0,1 ${-R},0 Z" fill="${c1}" stroke="#fff" stroke-width="2"/>`;
   return (
-    top + bottom +
-    renderLabel(items[0].label, 0, -LABEL_R, labelColor(c0), null) +   // upright
-    renderLabel(items[1].label, 0, LABEL_R, labelColor(c1), 180)        // upside-down
+    sliceGroup(items[0].label, top, renderLabel(items[0].label, 0, -LABEL_R, labelColor(c0), null, m)) +
+    sliceGroup(items[1].label, bottom, renderLabel(items[1].label, 0, LABEL_R, labelColor(c1), 180, m))
   );
 }
 
 export function buildWheelSVG(items, paletteName) {
   const weights = items.map((it) => it.weight || 1);
+  const m = labelMetrics(items.length || 1);
 
   let slices;
   if (isTwoHalfLayout(weights)) {
-    slices = twoHalfSlices(items, paletteName);
+    slices = twoHalfSlices(items, paletteName, m);
   } else {
     const angles = items.length ? sliceAngles(weights) : [];
     slices = angles.map((seg, i) => {
@@ -106,19 +118,14 @@ export function buildWheelSVG(items, paletteName) {
       const label = items[i].label;
       if (seg.end - seg.start >= 360) {
         // Single-item wheel: SVG drops degenerate 360° arcs, so use a full disc instead.
-        return (
-          `<circle r="${R}" fill="${fill}" stroke="#fff" stroke-width="2"/>` +
-          renderLabel(label, 0, -LABEL_R, labelColor(fill), null)
-        );
+        const disc = `<circle r="${R}" fill="${fill}" stroke="#fff" stroke-width="2"/>`;
+        return sliceGroup(label, disc, renderLabel(label, 0, -LABEL_R, labelColor(fill), null, m));
       }
       const mid = (seg.start + seg.end) / 2;
       const labelPos = polarToXY(LABEL_R, mid);
       const rot = mid > 180 ? mid - 270 : mid - 90; // keep text upright-ish
-      return (
-        `<path d="${slicePath(seg.start, seg.end)}" fill="${fill}" ` +
-        `stroke="#fff" stroke-width="2"/>` +
-        renderLabel(label, labelPos.x, labelPos.y, labelColor(fill), rot)
-      );
+      const path = `<path d="${slicePath(seg.start, seg.end)}" fill="${fill}" stroke="#fff" stroke-width="2"/>`;
+      return sliceGroup(label, path, renderLabel(label, labelPos.x, labelPos.y, labelColor(fill), rot, m));
     }).join('');
   }
 

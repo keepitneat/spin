@@ -31,3 +31,9 @@ test('labelColor: dark text on light slices, light text on dark slices', () => {
   assert.equal(labelColor('#047857'), '#ffffff'); // emerald → light text
   assert.equal(labelColor('#b45309'), '#ffffff'); // amber → light text
 });
+
+test('labelColor: medium/light mono greens pick the higher-contrast (dark) label', () => {
+  assert.equal(labelColor('#10b981'), '#111827'); // mid-green → dark text
+  assert.equal(labelColor('#34d399'), '#111827'); // light mint → dark text
+  assert.equal(labelColor('#6ee7b7'), '#111827'); // lightest mint → dark text
+});
