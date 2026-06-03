@@ -78,6 +78,7 @@ h1 { font-size: 18px; margin: 0; font-weight: 600; }
   font: 600 11px var(--font); letter-spacing: .05em; text-transform: uppercase;
   color: var(--muted); padding: 0;
 }
+.settings-group > legend { margin-bottom: 3px; }
 
 /* Segmented radio control */
 .seg { display: flex; gap: 6px; }
