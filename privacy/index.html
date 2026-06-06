@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · Just the Spin</title>
+  <meta name="description" content="How we use your data: we don't.">
+  <meta name="theme-color" content="#047857">
+  <link rel="icon" type="image/svg+xml" href="/icons/favicon.svg">
+  <!-- Apply saved theme before CSS loads, matching the app (no flash). -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('theme');
+      if (saved && saved !== 'system') document.documentElement.setAttribute('data-theme', saved);
+    })();
+  </script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="privacy">
+    <p><a class="privacy-back" href="/">← Just the Spin</a></p>
+
+    <h1>How we use your data</h1>
+    <p class="privacy-hero">We don't.</p>
+
+    <p>No account, no tracking, no analytics, no ads. Your wheels, history, and settings stay in your browser, on your device.</p>
+
+    <p class="privacy-caveat">No honest caveat needed here: Just the Spin calls nothing. No servers, no APIs, no third parties. Once the page has loaded, it works entirely offline — and we never see a thing.</p>
+  </main>
+
+  <footer>
+    <p>Part of the <a href="https://keepitneat.app">Keep It Neat</a> series.</p>
+    <p>No ads. No tracking. <a href="https://github.com/keepitneat/spin">Source on GitHub</a>.</p>
+  </footer>
+</body>
+</html>
